@@ -1,10 +1,18 @@
 const express = require('express');
+const path = require('path');
 const app = express();
 const exphbs = require('express-handlebars');
+const flash = require('connect-flash');
+const session = require('express-session');
 const methodOverride = require('method-override')
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose');
 const port = 5000;
+
+
+//load routers
+const ideas = require('./routes/ideas')
+const users = require('./routes/users')
 
 //Map Global promise- get rid of warning
 mongoose.Promise = global.Promise
@@ -30,8 +38,29 @@ app.set('view engine', 'handlebars');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+//Static folder
+app.use(express.static(path.join(__dirname,'public')))
+
 //Method override MiddleWare
 app.use(methodOverride('_method'));
+
+//Express session middleware
+app.use(session({
+  secret: 'tell me what you think',
+  resave: true,
+  saveUninitialized: true,
+}))
+
+//flash
+app.use(flash());
+
+//Global variables
+app.use(function(req,res,next){
+  res.locals.success_msg = req.flash('success_msg');
+  res.locals.error_msg = req.flash('error_msg');
+  res.locals.error = req.flash('error');
+  next();
+})
 
 //index route
 app.get('/', (req, res) => {
@@ -46,80 +75,11 @@ app.get('/about', (req, res) => {
   res.render('about')
 })
 
-//Idea index page
-app.get('/ideas',(req,res)=>{
-  Idea.find({})
-  .sort({date:'desc'})
-  .then(ideas =>{
-    res.render('ideas/index',{ideas: ideas})
-  })
-})
-
-//Add Idea Form route
-app.get('/ideas/add', (req, res) => {
-  res.render('ideas/add')
-})
-
-//Edit Idea Form route
-app.get('/ideas/edit/:id', (req, res) => {
-  Idea.findOne({
-    _id:req.params.id
-  })
-  .then(idea =>{
-    res.render('ideas/edit',{idea: idea});
-  })
-
-})
-
-
-//Process Form
-app.post('/ideas',(req,res)=>{
-  let errors = []
-  if(!req.body.title){
-    errors.push({text:'Please add title'})
-  }
-  if(!req.body.details){
-    errors.push({text:'Please add some details'})
-  }
-
-  if(errors.length > 0){
-    res.render('ideas/add',{
-      errors: errors,
-      title: req.body.title,
-      details: req.body.details
-     })
-  }else{
-    const newUser = {
-      title: req.body.title,
-      details: req.body.details
-    }
-    new Idea(newUser)
-    .save()
-    .then(idea =>{
-      res.redirect('/ideas')
-    })
-  }
-})
-
-//Edit Form Process
-app.put('/ideas/:id',(req,res)=>{
-  Idea.findOne({
-    _id: req.params.id
-  })
-  .then(idea=>{
-    //new values
-    idea.title = req.body.title;
-    idea.details = req.body.details;
-
-    idea.save()
-    .then(idea=>{
-      res.redirect('/ideas')
-    })
-
-  })
-})
 
 
 
+//use router
+app.use('/ideas',ideas);
+app.use('/users',users);
 
 app.listen(port, () => console.log(`app is running on port ${port}`))
