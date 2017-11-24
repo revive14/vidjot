@@ -4,8 +4,9 @@ const app = express();
 const exphbs = require('express-handlebars');
 const flash = require('connect-flash');
 const session = require('express-session');
-const methodOverride = require('method-override')
-const bodyParser = require('body-parser')
+const methodOverride = require('method-override');
+const bodyParser = require('body-parser');
+const passport = require('passport');
 const mongoose = require('mongoose');
 const port = 5000;
 
@@ -13,6 +14,9 @@ const port = 5000;
 //load routers
 const ideas = require('./routes/ideas')
 const users = require('./routes/users')
+
+//Passport Config
+require('./config/passport')(passport);
 
 //Map Global promise- get rid of warning
 mongoose.Promise = global.Promise
@@ -51,6 +55,10 @@ app.use(session({
   saveUninitialized: true,
 }))
 
+// Passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
+
 //flash
 app.use(flash());
 
@@ -59,6 +67,7 @@ app.use(function(req,res,next){
   res.locals.success_msg = req.flash('success_msg');
   res.locals.error_msg = req.flash('error_msg');
   res.locals.error = req.flash('error');
+  res.locals.user = req.user || null
   next();
 })
 
